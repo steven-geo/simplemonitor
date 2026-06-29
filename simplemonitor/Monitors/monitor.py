@@ -114,6 +114,20 @@ class Monitor:
         self._tolerance = self.get_config_option(
             "tolerance", required_type="int", default=0, minimum=0
         )
+        # TODO: Time Period Handling
+        self._times_type = cast(
+            str,
+            self.get_config_option(
+                "times_type",
+                required_type="str",
+                allowed_values=["always", "only", "not"],
+                default="always",
+            ),
+        )
+        if self._times_type in [AlertTimeFilter.ONLY, AlertTimeFilter.NOT]:
+            self.times_type = timestypevalidation
+
+
         self.remote_alerting = cast(
             bool,
             self.get_config_option("remote_alert", required_type="bool", default=False),
@@ -437,6 +451,7 @@ class Monitor:
         if not self.enabled:
             return False
         now = int(time.time())
+        # TODO: Test if in Maintenance Time period here
         if self._force_run:
             self._force_run = False
             self._last_run = now

@@ -316,6 +316,10 @@ class HTMLLogger(Logger):
         cell_class = ""
         if not monitor.enabled:
             status_text = "DISABLED"
+        # TODO: Handle Maintenance (Plan) status
+        # elif monitor.TBA:
+        #     status_text = "PLAN"
+        #     cell_class = "table-info"
         elif age_seconds > gap + 60:
             status_text = "OLD"
             cell_class = "table-warning"
@@ -380,6 +384,7 @@ class HTMLLogger(Logger):
         for entry in keys:
             this_entry = self.batch_data[entry]
             this_list = ok_entries
+            # TODO: Handle Maintenance Monitors
             if not this_entry["enabled"]:
                 disabled_count += 1
             elif this_entry["age"] > this_entry["gap"] + 60:
