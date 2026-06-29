@@ -8,7 +8,6 @@ import time
 
 from .monitor import Monitor, register
 
-
 @register
 class MonitorBackup(Monitor):
     """

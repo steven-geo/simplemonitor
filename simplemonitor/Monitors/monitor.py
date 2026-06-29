@@ -12,6 +12,7 @@ functions.
 import copy
 import datetime
 import logging
+import os
 import platform
 import re
 import subprocess  # nosec
@@ -41,6 +42,7 @@ from ..util import (
     get_config_option,
     short_hostname,
     subclass_dict_handler,
+    timeperiods,
 )
 
 module_logger = logging.getLogger("simplemonitor")
@@ -96,6 +98,7 @@ class Monitor:
             config_options = {}
         self._config_options = config_options
         self.name = name
+        self.maintenance = False
         self._deps = []  # type: List[str]
         self.monitor_logger = logging.getLogger("simplemonitor.monitor-" + self.name)
         self._dependencies = cast(
@@ -114,23 +117,16 @@ class Monitor:
         self._tolerance = self.get_config_option(
             "tolerance", required_type="int", default=0, minimum=0
         )
-        # TODO: Time Period Handling
-        self._times_type = cast(
-            str,
-            self.get_config_option(
-                "times_type",
-                required_type="str",
-                allowed_values=["always", "only", "not"],
-                default="always",
-            ),
-        )
-        if self._times_type in [AlertTimeFilter.ONLY, AlertTimeFilter.NOT]:
-            self.times_type = timestypevalidation
-
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
 
         self.remote_alerting = cast(
             bool,
             self.get_config_option("remote_alert", required_type="bool", default=False),
+        )
+        self._times_tz = cast(
+            str,
+            self.get_config_option("times_tz", default=os.environ.get("TZ", "local")),
         )
         self._recover_command = self.get_config_option("recover_command")
         self._recovered_command = self.get_config_option("recovered_command")
@@ -263,7 +259,6 @@ class Monitor:
 
     def log_result(self, name: str, logger: Any) -> None:
         """Save our latest result to the logger.
-
         TODO: remove when known safe"""
         self.monitor_logger.critical("Unexpected call to log_result()")
         raise NotImplementedError
@@ -297,6 +292,9 @@ class Monitor:
             self._minimum_gap = int(gap)
         else:
             raise TypeError("gap must be an integer")
+
+    def _describe_times(self) -> str:
+        return timeperiods.TimeHandler.describe_times(self)
 
     def describe(self) -> str:
         """Explain what this monitor does.
@@ -441,6 +439,9 @@ class Monitor:
     def was_skipped(self) -> bool:
         """Was the monitor skipped"""
         return self._state == MonitorState.SKIPPED
+    
+    def time_enabled(self):
+        return timeperiods.TimeHandler.time_enabled(self)
 
     def should_run(self) -> bool:
         """Check if we should run our tests.
@@ -451,7 +452,11 @@ class Monitor:
         if not self.enabled:
             return False
         now = int(time.time())
-        # TODO: Test if in Maintenance Time period here
+        if timeperiods.TimeHandler.time_maintenance(self):
+            self.maintenance = True
+            return False
+        else:
+            self.maintenance = False
         if self._force_run:
             self._force_run = False
             self._last_run = now
@@ -580,17 +585,16 @@ class Monitor:
             "recovery_info": self.recover_info,
             "recovered_info": self.recovered_info,
             "first_failure_time": self.first_failure_time(),
+            "maintenance": self.maintenance,
         }
         return ret
 
     def __str__(self) -> str:
         return self.describe()
 
-
 (register, get_class, all_types) = subclass_dict_handler(
     "simplemonitor.Monitors.monitor", Monitor, "monitor_type"
 )
-
 
 @register
 class MonitorFail(Monitor):

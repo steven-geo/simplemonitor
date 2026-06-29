@@ -21,6 +21,7 @@ from ..util import (
     get_config_option,
     short_hostname,
     subclass_dict_handler,
+    timeperiods,
 )
 
 
@@ -31,15 +32,6 @@ class AlertType(Enum):
     FAILURE = "failure"
     CATCHUP = "catchup"
     SUCCESS = "success"
-
-
-class AlertTimeFilter(Enum):
-    """How should the Alerter times be handled"""
-
-    ALWAYS = 0  # specified times are meaningless
-    NOT = 1  # not allowed between the specified times
-    ONLY = 2  # only allowed between the specified times
-
 
 class AlertLength(Enum):
     """How long should an Alert message be?"""
@@ -91,54 +83,9 @@ class Alerter:
         self._groups = self.get_config_option(
             "groups", required_type="[str]", default=["default"]
         )
-        _times_type = cast(
-            str,
-            self.get_config_option(
-                "times_type",
-                required_type="str",
-                allowed_values=["always", "only", "not"],
-                default="always",
-            ),
-        )
-        self._times_type = AlertTimeFilter.ALWAYS  # type: AlertTimeFilter
-        if _times_type == "always":
-            self._times_type = AlertTimeFilter.ALWAYS
-        elif _times_type == "only":
-            self._times_type = AlertTimeFilter.ONLY
-        elif _times_type == "not":
-            self._times_type = AlertTimeFilter.NOT
-        else:
-            raise ValueError("times_type is not recongnised: {}".format(_times_type))
-        self._time_info = (
-            None,
-            None,
-        )  # type: Tuple[Optional[datetime.time], Optional[datetime.time]]
-        if self._times_type in [AlertTimeFilter.ONLY, AlertTimeFilter.NOT]:
-            time_lower = str(
-                self.get_config_option("time_lower", required_type="str", required=True)
-            )
-            time_upper = str(
-                self.get_config_option("time_upper", required_type="str", required=True)
-            )
-            try:
-                time_lower_split = list(map(int, time_lower.split(":")))
-                time_upper_split = list(map(int, time_upper.split(":")))
-                time_info = [
-                    datetime.time(time_lower_split[0], time_lower_split[1]),
-                    datetime.time(time_upper_split[0], time_upper_split[1]),
-                ]
-                self._time_info = (time_info[0], time_info[1])
-            except Exception as error:
-                raise RuntimeError("error processing time limit definition") from error
-        self._days = cast(
-            List[int],
-            self.get_config_option(
-                "days",
-                required_type="[int]",
-                allowed_values=list(range(0, 7)),
-                default=list(range(0, 7)),
-            ),
-        )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
         self._delay_notification = self.get_config_option(
             "delay", required_type="bool", default=False
         )
@@ -173,10 +120,8 @@ class Alerter:
         self.enabled = cast(
             bool, self.get_config_option("enabled", required_type="bool", default=True)
         )
-
         if self._ooh_failures is None:
             self._ooh_failures = []
-
         self._alert_history: dict[str, datetime.datetime] = {}
         self.allow_reminders = self.get_config_option(
             "allow_reminders", required_type="bool"
@@ -212,7 +157,6 @@ class Alerter:
     @property
     def dependencies(self) -> List[str]:
         """The Monitors we depend on.
-
         If a monitor we depend on fails, it means we can't reach the database,
         so we shouldn't bother trying to write to it."""
         if self._dependencies is not None:
@@ -394,32 +338,10 @@ class Alerter:
         raise NotImplementedError
 
     def _allowed_today(self) -> bool:
-        """Check if today is an allowed day for an alert."""
-        if arrow.now(self._times_tz).weekday() not in self._days:
-            self.alerter_logger.debug("not allowed to alert today")
-            return False
-        return True
+        return timeperiods.TimeHandler.allowed_today(self)
 
     def _allowed_time(self) -> bool:
-        """Check if now is an allowed time for an alert."""
-        if self._times_type == AlertTimeFilter.ALWAYS:
-            return True
-        if self._time_info[0] is not None and self._time_info[1] is not None:
-            now = arrow.now(self._times_tz).time()
-            in_time_range = self._time_info[0] <= now < self._time_info[1]
-            if self._times_type == AlertTimeFilter.ONLY:
-                self.alerter_logger.debug("in_time_range: %s", in_time_range)
-                return in_time_range
-            if self._times_type == AlertTimeFilter.NOT:
-                self.alerter_logger.debug(
-                    "in_time_range: %s (inverting due to AlertTimeFilter.NOT)",
-                    in_time_range,
-                )
-                return not in_time_range
-        self.alerter_logger.error(
-            "this should never happen! Unknown times_type in alerter"
-        )
-        return True
+        return timeperiods.TimeHandler.allowed_time(self)
 
     @staticmethod
     def _get_verb(alert_type: AlertType) -> str:
@@ -525,26 +447,7 @@ class Alerter:
         return message
 
     def _describe_times(self) -> str:
-        """Return a string describing the times we're active."""
-        if self._times_type == AlertTimeFilter.ALWAYS:
-            return "(always)"
-        days_list = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        if self._days != list(range(0, 7)):
-            allowed_days = ", ".join([days_list[day] for day in sorted(self._days)])
-        else:
-            allowed_days = "any day"
-        start, end = self._time_info
-        if start is None or end is None:
-            return "(misconfigured times)"
-        message = "between {start} and {end} ({tz}) on {days}".format(
-            start=start.strftime("%H:%M"),
-            end=end.strftime("%H:%M"),
-            days=allowed_days,
-            tz=self._times_tz,
-        )
-        if self._times_type == AlertTimeFilter.ONLY:
-            return "only {}".format(message)
-        return "any time except {}".format(message)
+        return timeperiods.TimeHandler.describe_times(self)
 
     def _describe_action(self) -> str:
         """Return a string explaining what we do.

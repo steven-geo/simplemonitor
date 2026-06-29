@@ -58,6 +58,9 @@ class MonitorAPCUPSSNMP(Monitor):
         self.snmphost = self.snmpengine.Manager(
             self.host, community=self.community.encode("utf-8")
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def DecodeBasicStateOutput(self, error_state, state):
         """decode the 64-bit string encoded state to text"""

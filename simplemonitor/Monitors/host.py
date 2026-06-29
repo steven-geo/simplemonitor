@@ -52,6 +52,8 @@ class MonitorDiskSpace(Monitor):
         self.limit = size_string_to_bytes(
             self.get_config_option("limit", required=True)
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
 
     def run_test(self) -> bool:
         try:
@@ -111,6 +113,8 @@ class MonitorFileStat(Monitor):
         else:
             self.maxsize = None
         self.filename = self.get_config_option("filename", required=True)
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
 
     def run_test(self) -> bool:
         try:
@@ -174,6 +178,9 @@ class MonitorApcupsd(Monitor):
     def __init__(self, name: str, config_options: dict) -> None:
         super().__init__(name, config_options)
         self.path = self.get_config_option("path", default="")
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def run_test(self) -> bool:
         info = {}
@@ -238,6 +245,9 @@ class MonitorNUT(Monitor):
         self.ups = cast(
             str, self.get_config_option("ups", required=True, allow_empty=False)
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def run_test(self) -> bool:
         info = {}
@@ -301,6 +311,9 @@ class MonitorPortAudit(Monitor):
     def __init__(self, name: str, config_options: dict) -> None:
         super().__init__(name, config_options)
         self.path = self.get_config_option("path", default="")
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def describe(self) -> str:
         return "Checking for insecure ports."
@@ -355,6 +368,9 @@ class MonitorPkgAudit(Monitor):
         self.ignore_list = cast(
             list[str], self.get_config_option("ignore", required_type="list[str]")
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def describe(self) -> str:
         return "Checking for insecure packages."
@@ -420,6 +436,9 @@ class MonitorLoadAvg(Monitor):
         self.max = self.get_config_option(
             "max", required_type="float", default=1.00, minimum=0
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def describe(self) -> str:
         if self.which == 0:
@@ -457,6 +476,9 @@ class MonitorMemory(Monitor):
             int,
             self.get_config_option("percent_free", required_type="int", required=True),
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def run_test(self) -> bool:
         if psutil is None:
@@ -490,6 +512,9 @@ class MonitorSwap(Monitor):
             int,
             self.get_config_option("percent_free", required_type="int", required=True),
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def run_test(self) -> bool:
         if psutil is None:
@@ -520,6 +545,9 @@ class MonitorZap(Monitor):
         self.span = self.get_config_option(
             "span", required_type="int", default=1, minimum=1
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def run_test(self) -> bool:
         try:
@@ -570,6 +598,9 @@ class MonitorCommand(Monitor):
         self.show_output = self.get_config_option(
             "show_output", required_type="bool", default=False
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
         command = self.get_config_option("command", required=True, allow_empty=False)
         self.command = shlex.split(command)
@@ -647,6 +678,9 @@ class MonitorZpool(Monitor):
             self.monitor_logger.warning(
                 "Failed to divine zpool version; using text parsing"
             )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def describe(self) -> str:
         if not self.pools:

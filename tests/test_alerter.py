@@ -10,6 +10,7 @@ from freezegun import freeze_time
 from simplemonitor import util
 from simplemonitor.Alerters import alerter, sns
 from simplemonitor.Monitors import monitor
+from simplemonitor.util import timeperiods
 
 # Create a consistent "local" timezone and offset for the tests, for tests that
 # compare the offset between UTC and local time. For simplicity and
@@ -31,7 +32,7 @@ class TestAlerter(unittest.TestCase):
     def test_times_always(self):
         config_options = {"times_type": "always"}
         a = alerter.Alerter(config_options)
-        self.assertEqual(a._times_type, alerter.AlertTimeFilter.ALWAYS)
+        self.assertEqual(a._times_type, timeperiods.TimeType.ALWAYS)
         self.assertEqual(a._time_info, (None, None))
 
     def test_times_only(self):
@@ -41,7 +42,7 @@ class TestAlerter(unittest.TestCase):
             "time_upper": "11:00",
         }
         a = alerter.Alerter(config_options)
-        self.assertEqual(a._times_type, alerter.AlertTimeFilter.ONLY)
+        self.assertEqual(a._times_type, timeperiods.TimeType.ONLY)
         self.assertEqual(a._time_info, (datetime.time(10, 00), datetime.time(11, 00)))
 
     def test_times_not(self):
@@ -51,7 +52,7 @@ class TestAlerter(unittest.TestCase):
             "time_upper": "11:00",
         }
         a = alerter.Alerter(config_options)
-        self.assertEqual(a._times_type, alerter.AlertTimeFilter.NOT)
+        self.assertEqual(a._times_type, timeperiods.TimeType.NOT)
         self.assertEqual(a._time_info, (datetime.time(10, 00), datetime.time(11, 00)))
 
     def test_times_broken(self):

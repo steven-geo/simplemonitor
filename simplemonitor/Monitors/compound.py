@@ -38,6 +38,9 @@ class CompoundMonitor(Monitor):
                 "min_fail", required_type="int", default=len(self.monitors), minimum=1
             ),
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def run_test(self) -> bool:
         # we depend on the other tests to run, just check them
@@ -124,6 +127,9 @@ class RemoteHostsMonitor(Monitor):
             ),
         )
         self._max_age = datetime.timedelta(seconds=self.max_age)
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def set_sm_ref(self, sm: "SimpleMonitor") -> None:
         self.simplemonitor = sm

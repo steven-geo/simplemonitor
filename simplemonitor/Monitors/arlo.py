@@ -37,6 +37,8 @@ class MonitorArloCamera(Monitor):
         self.arlo: Optional[pyaarlo.PyArlo] = None
         self.arlo_base: Optional[pyaarlo.ArloBase] = None
         self.camera: Optional[pyaarlo.ArloCamera] = None
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
 
     def run_test(self) -> bool:
         if self.arlo is None:

@@ -23,6 +23,9 @@ class MonitorGmirrorStatus(Monitor):
         self.expected_disks = self.get_config_option(
             "expected_disks", required_type="int", required=True
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def run_test(self) -> bool:
         """

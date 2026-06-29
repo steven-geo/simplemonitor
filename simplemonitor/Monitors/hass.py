@@ -23,6 +23,9 @@ class MonitorSensor(Monitor):
         self.timeout = cast(
             int, self.get_config_option("timeout", required_type="int", default=5)
         )
+        # Handle Time/Date periods
+        timeperiods.TimeHandler.setup(self)
+
 
     def describe(self) -> str:
         return "monitor the existence of a sensor"
