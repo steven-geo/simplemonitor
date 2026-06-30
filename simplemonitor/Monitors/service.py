@@ -241,7 +241,7 @@ class MonitorUnixService(Monitor):
                 )
             )
         if returncode == self._want_return_code:
-            return self.record_success()
+            return self.record_success(f"{self.service_name} Running")
         return self.record_fail(
             "Got exit code {}, wanted {}".format(returncode, self._want_return_code)
         )
