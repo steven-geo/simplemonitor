@@ -204,6 +204,35 @@ Note that the :confval:`times_type` option sets the timezone all the values are 
     the timezone for :confval:`day`, :confval:`time_lower` and :confval:`time_upper` to be interpreted in.
 
 
+Time examples
+^^^^^^^^^^^^^
+
+These snippets omit the monitor-specific configuration values.
+
+Only Monitor outside of Typical Business hours (8:30am to 5:30pm, Monday to Friday):
+
+.. code-block:: ini
+
+   [myserver]
+   type=host
+   times_type=not
+   time_lower=08:30
+   time_upper=17:30
+   days=Mon,Tue,Wed,Thu,Fri
+
+Don't send at antisocial times, but let me know later if something broke and hasn't recovered yet:
+
+.. code-block:: ini
+
+   [polite_alerter]
+   type=some-alerter-type
+   times_type=only
+   time_lower=07:30
+   time_upper=22:00
+   delay=1
+
+.. _monitors-list:
+
 Monitors
 --------
 
